@@ -287,6 +287,8 @@ ssh_pwauth: false
 EOF
 
     cat "$PROFILE_FILE" >> "$USER_DATA"
+    
+    sed -i "s/__VM_USER__/$VM_USER/g" "$USER_DATA"
 
     echo "✓ Created:"
     echo "  $USER_DATA"

@@ -17,6 +17,8 @@ NETWORK="default"
 
 IMAGE_NAME="noble-server-cloudimg-amd64.img"
 
+PROFILE="minimal"
+
 # ---------- Runtime paths ----------
 IMAGE_DIR=""
 IMAGE_PATH=""
@@ -24,6 +26,12 @@ VM_DIR=""
 VM_DISK=""
 SEED_ISO=""
 USER_DATA=""
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+
+PROFILE_DIR="$PROJECT_ROOT/profiles/ubuntu"
+PROFILE_FILE=""
 
 # ============================================================
 # Helpers
@@ -36,6 +44,7 @@ Usage:
 
 Options:
   --name NAME          VM name (default: $VM_NAME)
+  --profile NAME       Provisioning profile (default: minimal)
   --ram MB             RAM in MB (default: $RAM_MB)
   --vcpus COUNT        Number of vCPUs (default: $VCPUS)
   --disk SIZE          Disk size (default: $DISK_SIZE)
@@ -69,6 +78,12 @@ parse_args() {
             --name)
                 [[ $# -ge 2 ]] || error "--name requires a value"
                 VM_NAME="$2"
+                shift 2
+                ;;
+
+            --profile)
+                [[ $# -ge 2 ]] || error "--profile requires a value"
+                PROFILE="$2"
                 shift 2
                 ;;
 
@@ -231,6 +246,21 @@ get_ssh_key() {
 }
 
 # ============================================================
+# Validate Profile
+# ============================================================
+
+validate_profile(){
+  PROFILE_FILE="$PROFILE_DIR/$PROFILE.yaml"
+
+  if [[ ! -f "$PROFILE_FILE" ]]; then
+    error"Unknown profile '$PROFILE'. Expected:
+    $PROFILE_DIR/$PROFILE_FILE.yaml"
+  fi
+
+  echo "✓ Profile: $PROFILE"
+}
+
+# ============================================================
 # Cloud-init
 # ============================================================
 
@@ -254,14 +284,9 @@ users:
 
 ssh_pwauth: false
 
-package_update: true
-
-packages:
-  - qemu-guest-agent
-
-runcmd:
-  - systemctl enable --now qemu-guest-agent
 EOF
+
+    cat "$PROFILE_FILE" >> "$USER_DATA"
 
     echo "✓ Created:"
     echo "  $USER_DATA"
@@ -379,6 +404,7 @@ main() {
     echo "=== Ubuntu VM Provisioner ==="
     echo
     echo "VM name : $VM_NAME"
+    echo "Profile : $PROFILE"
     echo "RAM     : ${RAM_MB} MB"
     echo "vCPUs   : $VCPUS"
     echo "Disk    : $DISK_SIZE"
@@ -387,6 +413,7 @@ main() {
     echo "Network : $NETWORK"
 
     check_dependencies
+    validate_profile
     prepare_storage
     download_base_image
     generate_cloud_init

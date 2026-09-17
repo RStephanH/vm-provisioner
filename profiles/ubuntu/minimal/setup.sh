@@ -1,0 +1,3 @@
+apt-get update
+apt-get install  -y qemu-guest-agent
+systemctl enable --now qemu-guest-agent
